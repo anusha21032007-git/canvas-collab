@@ -29,7 +29,7 @@ const Canvas = ({ brushColor, brushSize, isEraser, canvasRef }: CanvasProps) => 
     const canvas = new FabricCanvas(htmlCanvasRef.current, {
       width,
       height,
-      backgroundColor: "#ffffff",
+      backgroundColor: "transparent",
       isDrawingMode: true,
     });
 
@@ -98,7 +98,7 @@ const Canvas = ({ brushColor, brushSize, isEraser, canvasRef }: CanvasProps) => 
   return (
     <div
       ref={containerRef}
-      className="flex-1 m-4 rounded-lg border border-canvas-border canvas-shadow overflow-hidden bg-canvas"
+      className="flex-1 m-4 rounded-lg border border-canvas-border canvas-shadow overflow-hidden bg-transparent"
     >
       <canvas
         ref={htmlCanvasRef}
