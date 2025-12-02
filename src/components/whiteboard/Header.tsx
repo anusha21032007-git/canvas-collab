@@ -13,7 +13,7 @@ interface HeaderProps {
  */
 const Header = ({ userCount, onClearAll, onUndo, canUndo }: HeaderProps) => {
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-card/50 backdrop-blur-sm border-b border-border toolbar-shadow">
+    <header className="flex items-center justify-between px-4 py-3 bg-card border-b border-border toolbar-shadow">
       {/* App title */}
       <h1 className="text-lg font-semibold text-foreground">
         Collaborative Whiteboard

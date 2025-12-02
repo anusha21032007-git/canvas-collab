@@ -45,7 +45,7 @@ const Whiteboard = () => {
     if (!canvasRef.current) return;
 
     canvasRef.current.clear();
-    canvasRef.current.backgroundColor = "transparent";
+    canvasRef.current.backgroundColor = "#ffffff";
     canvasRef.current.renderAll();
     setCanUndo(false);
     toast.success("Canvas cleared!");
@@ -99,7 +99,7 @@ const Whiteboard = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-transparent">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header with title and global actions */}
       <Header
         userCount={userCount}
@@ -128,7 +128,7 @@ const Whiteboard = () => {
       />
 
       {/* Footer with instructions */}
-      <footer className="px-4 py-2 text-center text-sm text-muted-foreground bg-card/50 backdrop-blur-sm border-t border-border">
+      <footer className="px-4 py-2 text-center text-sm text-muted-foreground bg-card border-t border-border">
         Draw with mouse or touch — changes sync instantly
       </footer>
     </div>

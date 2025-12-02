@@ -40,7 +40,7 @@ const Toolbar = ({
   onDownload,
 }: ToolbarProps) => {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar/50 backdrop-blur-sm border-b border-border">
+    <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
       {/* Color picker section */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground mr-1">Color</span>
