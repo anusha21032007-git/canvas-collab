@@ -6,6 +6,7 @@ import {
   Square,
   Minus,
   Shapes,
+  Type, // Importing the Type icon for the Text tool
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const SIZES = [
 // Tool options - separated into primary and shapes
 const PRIMARY_TOOLS = [
   { name: "pencil", icon: Paintbrush, label: "Draw" },
+  { name: "text", icon: Type, label: "Text" }, // New Text tool
   { name: "eraser", icon: Eraser, label: "Eraser" },
 ];
 
@@ -69,14 +71,15 @@ const Toolbar = ({
     activeTool === "pencil" ||
     activeTool === "rectangle" ||
     activeTool === "circle" ||
-    activeTool === "line";
+    activeTool === "line" ||
+    activeTool === "text"; // Include text for color/size logic
 
   const isShapeToolActive = SHAPE_TOOLS.some(t => t.name === activeTool);
   const activeShape = SHAPE_TOOLS.find(t => t.name === activeTool);
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
-      {/* Primary Tool buttons (Pencil, Eraser) */}
+      {/* Primary Tool buttons (Pencil, Text, Eraser) */}
       <div className="flex items-center gap-2">
         {PRIMARY_TOOLS.map((tool) => (
           <Button

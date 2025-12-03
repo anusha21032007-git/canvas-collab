@@ -7,6 +7,7 @@ import {
   Line,
   IEvent,
   Object as FabricObject,
+  IText, // Importing IText for text objects
 } from "fabric";
 
 interface CanvasProps {
@@ -93,42 +94,68 @@ const Canvas = ({
     if (!canvas) return;
 
     const isDrawingTool = activeTool === "pencil" || activeTool === "eraser";
+    const isShapeTool =
+      activeTool === "rectangle" || activeTool === "circle" || activeTool === "line";
+    const isTextTool = activeTool === "text";
+
     canvas.isDrawingMode = isDrawingTool;
-    canvas.selection = false;
-    canvas.defaultCursor = "crosshair";
+    canvas.selection = !isTextTool; // Allow selection/manipulation unless text tool is active
+    canvas.defaultCursor = isTextTool ? "text" : "crosshair";
 
     const handleMouseDown = (e: IEvent) => {
       if (!e.pointer) return;
-      drawingState.startPoint = { x: e.pointer.x, y: e.pointer.y };
-      let shape: FabricObject | null = null;
+      const { x, y } = e.pointer;
 
-      const commonProps = {
-        left: e.pointer.x,
-        top: e.pointer.y,
-        fill: "transparent",
-        stroke: brushColor,
-        strokeWidth: brushSize,
-        originX: "left",
-        originY: "top",
-      };
-
-      switch (activeTool) {
-        case "rectangle":
-          shape = new Rect({ ...commonProps, width: 0, height: 0 });
-          break;
-        case "circle":
-          shape = new Circle({ ...commonProps, radius: 0 });
-          break;
-        case "line":
-          shape = new Line([e.pointer.x, e.pointer.y, e.pointer.x, e.pointer.y], {
-            stroke: brushColor,
-            strokeWidth: brushSize,
-          });
-          break;
+      if (isTextTool) {
+        // Add new text object
+        const text = new IText("Type here", {
+          left: x,
+          top: y,
+          fill: brushColor,
+          fontSize: brushSize * 4, // Scale font size based on brush size for consistency
+          fontFamily: "Inter, sans-serif",
+          editable: true,
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        text.enterEditing();
+        onUpdate();
+        canvas.renderAll();
+        return;
       }
-      if (shape) {
-        drawingState.shape = shape;
-        canvas.add(shape);
+
+      if (isShapeTool) {
+        drawingState.startPoint = { x, y };
+        let shape: FabricObject | null = null;
+
+        const commonProps = {
+          left: x,
+          top: y,
+          fill: "transparent",
+          stroke: brushColor,
+          strokeWidth: brushSize,
+          originX: "left",
+          originY: "top",
+        };
+
+        switch (activeTool) {
+          case "rectangle":
+            shape = new Rect({ ...commonProps, width: 0, height: 0 });
+            break;
+          case "circle":
+            shape = new Circle({ ...commonProps, radius: 0 });
+            break;
+          case "line":
+            shape = new Line([x, y, x, y], {
+              stroke: brushColor,
+              strokeWidth: brushSize,
+            });
+            break;
+        }
+        if (shape) {
+          drawingState.shape = shape;
+          canvas.add(shape);
+        }
       }
     };
 
@@ -174,16 +201,20 @@ const Canvas = ({
 
     const handlePathCreated = () => onUpdate();
 
+    // Clear previous listeners
+    canvas.off("mouse:down");
+    canvas.off("mouse:move");
+    canvas.off("mouse:up");
+    canvas.off("path:created");
+
     if (isDrawingTool) {
-      canvas.off("mouse:down", handleMouseDown);
-      canvas.off("mouse:move", handleMouseMove);
-      canvas.off("mouse:up", handleMouseUp);
       canvas.on("path:created", handlePathCreated);
     } else {
       canvas.on("mouse:down", handleMouseDown);
-      canvas.on("mouse:move", handleMouseMove);
-      canvas.on("mouse:up", handleMouseUp);
-      canvas.off("path:created", handlePathCreated);
+      if (isShapeTool) {
+        canvas.on("mouse:move", handleMouseMove);
+        canvas.on("mouse:up", handleMouseUp);
+      }
     }
 
     return () => {
@@ -194,7 +225,7 @@ const Canvas = ({
         canvas.off("path:created");
       }
     };
-  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState]);
+  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState, isTextTool]);
 
   return (
     <div
