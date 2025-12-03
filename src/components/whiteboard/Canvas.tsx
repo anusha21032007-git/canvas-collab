@@ -116,6 +116,15 @@ const Canvas = ({
           fontFamily: "Inter, sans-serif",
           editable: true,
         });
+
+        // When entering edit mode, select the placeholder text
+        text.on("editing:entered", () => {
+          if (text.text === "Type here") {
+            text.selectAll();
+            canvas.renderAll();
+          }
+        });
+
         canvas.add(text);
         canvas.setActiveObject(text);
         text.enterEditing();
