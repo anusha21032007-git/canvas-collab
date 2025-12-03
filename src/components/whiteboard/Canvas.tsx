@@ -225,7 +225,7 @@ const Canvas = ({
         canvas.off("path:created");
       }
     };
-  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState, isTextTool]);
+  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState]);
 
   return (
     <div
