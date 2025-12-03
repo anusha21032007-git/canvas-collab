@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Canvas as FabricCanvas } from "fabric";
+import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 import Header from "./Header";
 import Toolbar from "./Toolbar";
@@ -23,6 +23,13 @@ const Whiteboard = () => {
 
   // Reference to the Fabric.js canvas instance
   const canvasRef = useRef<FabricCanvas | null>(null);
+
+  // Track when canvas has content for undo functionality
+  const handleCanvasUpdate = useCallback(() => {
+    if (canvasRef.current) {
+      setCanUndo(canvasRef.current.getObjects().length > 0);
+    }
+  }, []);
 
   // Handle color selection
   const handleColorChange = useCallback((color: string) => {
@@ -71,14 +78,12 @@ const Whiteboard = () => {
   const handleDownload = useCallback(() => {
     if (!canvasRef.current) return;
 
-    // Get canvas data as PNG
     const dataURL = canvasRef.current.toDataURL({
       format: "png",
       quality: 1,
-      multiplier: 2, // Higher resolution export
+      multiplier: 2,
     });
 
-    // Create download link
     const link = document.createElement("a");
     link.download = `whiteboard-${Date.now()}.png`;
     link.href = dataURL;
@@ -89,16 +94,47 @@ const Whiteboard = () => {
     toast.success("Drawing saved!");
   }, []);
 
-  // Track when canvas has content for undo functionality
-  const handleCanvasUpdate = useCallback(() => {
-    if (canvasRef.current) {
-      setCanUndo(canvasRef.current.getObjects().length > 0);
-    }
+  // Handle uploading an image as an object
+  const handleImageUpload = useCallback((file: File) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imgUrl = e.target?.result as string;
+      FabricImage.fromURL(imgUrl, (img) => {
+        img.scaleToWidth(300);
+        canvas.centerObject(img);
+        canvas.add(img);
+        canvas.renderAll();
+        handleCanvasUpdate();
+        toast.success("Image added to canvas!");
+      });
+    };
+    reader.readAsDataURL(file);
+  }, [handleCanvasUpdate]);
+
+  // Handle uploading an image as the canvas background
+  const handleBackgroundUpload = useCallback((file: File) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imgUrl = e.target?.result as string;
+      FabricImage.fromURL(imgUrl, (img) => {
+        if (canvas.width && canvas.height) {
+          canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+            scaleX: canvas.width / (img.width || 1),
+            scaleY: canvas.height / (img.height || 1),
+          });
+        }
+        toast.success("Background image updated!");
+      });
+    };
+    reader.readAsDataURL(file);
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header with title and global actions */}
       <Header
         userCount={userCount}
         onClearAll={handleClearAll}
@@ -106,7 +142,6 @@ const Whiteboard = () => {
         canUndo={canUndo}
       />
 
-      {/* Toolbar with drawing tools */}
       <Toolbar
         activeColor={brushColor}
         brushSize={brushSize}
@@ -115,9 +150,10 @@ const Whiteboard = () => {
         onSizeChange={handleSizeChange}
         onToolChange={handleToolChange}
         onDownload={handleDownload}
+        onImageUpload={handleImageUpload}
+        onBackgroundUpload={handleBackgroundUpload}
       />
 
-      {/* Main canvas area */}
       <Canvas
         brushColor={brushColor}
         brushSize={brushSize}
@@ -126,7 +162,6 @@ const Whiteboard = () => {
         onUpdate={handleCanvasUpdate}
       />
 
-      {/* Footer with instructions */}
       <footer className="px-4 py-2 text-center text-sm text-muted-foreground bg-card border-t border-border">
         Draw with mouse or touch — changes sync instantly
       </footer>

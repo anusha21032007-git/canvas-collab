@@ -7,7 +7,8 @@ import {
   Line,
   IEvent,
   Object as FabricObject,
-  IText, // Importing IText for text objects
+  IText,
+  Group,
 } from "fabric";
 
 interface CanvasProps {
@@ -18,10 +19,6 @@ interface CanvasProps {
   onUpdate: () => void;
 }
 
-/**
- * Canvas component for drawing with mouse and touch support
- * Uses Fabric.js for rendering and managing drawing strokes
- */
 const Canvas = ({
   brushColor,
   brushSize,
@@ -97,27 +94,57 @@ const Canvas = ({
     const isShapeTool =
       activeTool === "rectangle" || activeTool === "circle" || activeTool === "line";
     const isTextTool = activeTool === "text";
+    const isStickyNoteTool = activeTool === "sticky-note";
 
     canvas.isDrawingMode = isDrawingTool;
-    canvas.selection = !isTextTool; // Allow selection/manipulation unless text tool is active
+    canvas.selection = !isTextTool && !isStickyNoteTool;
     canvas.defaultCursor = isTextTool ? "text" : "crosshair";
 
     const handleMouseDown = (e: IEvent) => {
       if (!e.pointer) return;
       const { x, y } = e.pointer;
 
+      if (isStickyNoteTool) {
+        const noteBg = new Rect({
+          width: 200,
+          height: 200,
+          fill: "#FFD54F", // A nice yellow for sticky notes
+          shadow: "rgba(0,0,0,0.2) 3px 3px 7px",
+          rx: 8,
+          ry: 8,
+        });
+
+        const noteText = new IText("Type here...", {
+          top: 15,
+          left: 15,
+          width: 170,
+          fontSize: 22,
+          fontFamily: "Inter, sans-serif",
+          fill: "#333",
+        });
+
+        const group = new Group([noteBg, noteText], {
+          left: x - 100,
+          top: y - 100,
+        });
+
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        onUpdate();
+        canvas.renderAll();
+        return;
+      }
+
       if (isTextTool) {
-        // Add new text object
         const text = new IText("Type here", {
           left: x,
           top: y,
           fill: brushColor,
-          fontSize: brushSize * 4, // Scale font size based on brush size for consistency
+          fontSize: brushSize * 4,
           fontFamily: "Inter, sans-serif",
           editable: true,
         });
 
-        // When entering edit mode, select the placeholder text
         text.on("editing:entered", () => {
           if (text.text === "Type here") {
             text.selectAll();
@@ -210,7 +237,6 @@ const Canvas = ({
 
     const handlePathCreated = () => onUpdate();
 
-    // Clear previous listeners
     canvas.off("mouse:down");
     canvas.off("mouse:move");
     canvas.off("mouse:up");

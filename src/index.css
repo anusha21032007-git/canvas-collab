@@ -230,6 +230,24 @@
     background-color: hsl(var(--destructive));
   }
 
+  .icon-content button[data-tool="sticky-note"] { --active-color: hsl(var(--warning)); }
+  .icon-content button[data-tool="sticky-note"] .filled,
+  .icon-content:has(button[data-tool="sticky-note"]) .tooltip {
+    background-color: hsl(var(--warning));
+  }
+
+  .icon-content button[data-tool="image"] { --active-color: hsl(var(--secondary-foreground)); }
+  .icon-content button[data-tool="image"] .filled,
+  .icon-content:has(button[data-tool="image"]) .tooltip {
+    background-color: hsl(var(--secondary-foreground));
+  }
+
+  .icon-content button[data-tool="background"] { --active-color: hsl(var(--muted-foreground)); }
+  .icon-content button[data-tool="background"] .filled,
+  .icon-content:has(button[data-tool="background"]) .tooltip {
+    background-color: hsl(var(--muted-foreground));
+  }
+
   .icon-content button[data-tool="download"] { --active-color: hsl(var(--muted-foreground)); }
   .icon-content button[data-tool="download"] .filled,
   .icon-content:has(button[data-tool="download"]) .tooltip {

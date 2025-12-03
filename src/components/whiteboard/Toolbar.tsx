@@ -7,7 +7,11 @@ import {
   Minus,
   Shapes,
   Type,
+  StickyNote,
+  ImagePlus,
+  Image as ImageIcon,
 } from "lucide-react";
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -36,6 +40,7 @@ const SIZES = [
 const PRIMARY_TOOLS = [
   { name: "pencil", icon: Paintbrush, label: "Draw" },
   { name: "text", icon: Type, label: "Text" },
+  { name: "sticky-note", icon: StickyNote, label: "Sticky Note" },
   { name: "eraser", icon: Eraser, label: "Eraser" },
 ];
 
@@ -53,6 +58,8 @@ interface ToolbarProps {
   onSizeChange: (size: number) => void;
   onToolChange: (tool: string) => void;
   onDownload: () => void;
+  onImageUpload: (file: File) => void;
+  onBackgroundUpload: (file: File) => void;
 }
 
 const Toolbar = ({
@@ -63,10 +70,23 @@ const Toolbar = ({
   onSizeChange,
   onToolChange,
   onDownload,
+  onImageUpload,
+  onBackgroundUpload,
 }: ToolbarProps) => {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
   const isDrawingTool = ["pencil", "rectangle", "circle", "line", "text"].includes(activeTool);
-  const isShapeToolActive = SHAPE_TOOLS.some(t => t.name === activeTool);
-  const activeShape = SHAPE_TOOLS.find(t => t.name === activeTool);
+  const isShapeToolActive = SHAPE_TOOLS.some((t) => t.name === activeTool);
+  const activeShape = SHAPE_TOOLS.find((t) => t.name === activeTool);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, handler: (file: File) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handler(file);
+    }
+    e.target.value = ""; // Reset input to allow uploading the same file again
+  };
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
@@ -167,14 +187,42 @@ const Toolbar = ({
       {/* Divider */}
       <div className="h-8 w-px bg-border" />
 
-      {/* Download button */}
-      <IconTooltip
-        label="Download"
-        toolName="download"
-        onClick={onDownload}
-      >
-        <Download />
-      </IconTooltip>
+      {/* Insert/Upload tools */}
+      <div className="flex items-center gap-3">
+        <IconTooltip
+          label="Upload Image"
+          toolName="image"
+          onClick={() => imageInputRef.current?.click()}
+        >
+          <ImagePlus />
+        </IconTooltip>
+        <IconTooltip
+          label="Set Background"
+          toolName="background"
+          onClick={() => bgInputRef.current?.click()}
+        >
+          <ImageIcon />
+        </IconTooltip>
+        <IconTooltip label="Download" toolName="download" onClick={onDownload}>
+          <Download />
+        </IconTooltip>
+      </div>
+
+      {/* Hidden file inputs */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        onChange={(e) => handleFileChange(e, onImageUpload)}
+        accept="image/*"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={bgInputRef}
+        onChange={(e) => handleFileChange(e, onBackgroundUpload)}
+        accept="image/*"
+        className="hidden"
+      />
     </div>
   );
 };
