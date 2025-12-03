@@ -62,10 +62,14 @@ const Whiteboard = () => {
   // Clear all drawings from the current board
   const handleClearAll = useCallback(() => {
     if (!canvasRef.current) return;
+    
+    // 1. Clear the canvas visually
     canvasRef.current.clear();
     canvasRef.current.backgroundColor = "#ffffff";
     canvasRef.current.renderAll();
     setCanUndo(false);
+    
+    // 2. Clear the state in the boards array (only for the active board)
     setBoards((prevBoards) => {
       const newBoards = [...prevBoards];
       newBoards[activeBoardIndex] = {};
