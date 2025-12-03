@@ -16,6 +16,7 @@ interface CanvasProps {
   brushSize: number;
   activeTool: string;
   canvasRef: React.MutableRefObject<FabricCanvas | null>;
+  onReady: () => void;
   onUpdate: () => void;
 }
 
@@ -24,6 +25,7 @@ const Canvas = ({
   brushSize,
   activeTool,
   canvasRef,
+  onReady,
   onUpdate,
 }: CanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,16 +48,14 @@ const Canvas = ({
     });
 
     canvas.freeDrawingBrush = new PencilBrush(canvas);
-    canvas.freeDrawingBrush.color = brushColor;
-    canvas.freeDrawingBrush.width = brushSize;
-
     canvasRef.current = canvas;
+    onReady();
 
     return () => {
       canvas.dispose();
       canvasRef.current = null;
     };
-  }, [brushColor, brushSize, canvasRef]);
+  }, [canvasRef, onReady]);
 
   // Handle window resize
   useEffect(() => {

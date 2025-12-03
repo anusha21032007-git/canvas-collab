@@ -1,10 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 import Header from "./Header";
 import Toolbar from "./Toolbar";
 import Canvas from "./Canvas";
 import BoardControls from "./BoardControls";
+
+const BOARDS_STORAGE_KEY = "whiteboard_boards_data";
+const ACTIVE_INDEX_STORAGE_KEY = "whiteboard_active_index";
 
 /**
  * Main Whiteboard component that orchestrates all whiteboard functionality
@@ -28,6 +31,61 @@ const Whiteboard = () => {
 
   // Reference to the Fabric.js canvas instance
   const canvasRef = useRef<FabricCanvas | null>(null);
+  const [isCanvasReady, setCanvasReady] = useState(false);
+  const isInitialLoadRef = useRef(true);
+
+  // Effect to load data from localStorage when the canvas is ready
+  useEffect(() => {
+    if (isCanvasReady && isInitialLoadRef.current) {
+      isInitialLoadRef.current = false; // Prevent this from running again
+
+      try {
+        const savedBoardsRaw = localStorage.getItem(BOARDS_STORAGE_KEY);
+        const savedIndexRaw = localStorage.getItem(ACTIVE_INDEX_STORAGE_KEY);
+        let boardToLoad: object = {};
+        let activeIndex = 0;
+
+        if (savedBoardsRaw) {
+          const savedBoards = JSON.parse(savedBoardsRaw);
+          if (Array.isArray(savedBoards) && savedBoards.length > 0) {
+            setBoards(savedBoards);
+            if (savedIndexRaw) {
+              const savedIndex = JSON.parse(savedIndexRaw);
+              if (typeof savedIndex === "number" && savedIndex < savedBoards.length) {
+                setActiveBoardIndex(savedIndex);
+                activeIndex = savedIndex;
+              }
+            }
+            boardToLoad = savedBoards[activeIndex] || {};
+          }
+        }
+        
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.loadFromJSON(boardToLoad, () => {
+            canvas.renderAll();
+            setCanUndo(canvas.getObjects().length > 0);
+            toast.success("Welcome back! Your work has been restored.");
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load whiteboard state from localStorage", error);
+        toast.error("Could not restore your previous session.");
+      }
+    }
+  }, [isCanvasReady]);
+
+  // Effect to save data to localStorage whenever it changes
+  useEffect(() => {
+    if (!isInitialLoadRef.current) {
+      try {
+        localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(boards));
+        localStorage.setItem(ACTIVE_INDEX_STORAGE_KEY, JSON.stringify(activeBoardIndex));
+      } catch (error) {
+        console.error("Failed to save whiteboard state to localStorage", error);
+      }
+    }
+  }, [boards, activeBoardIndex]);
 
   // Track when canvas has content for undo functionality
   const handleCanvasUpdate = useCallback(() => {
@@ -63,13 +121,11 @@ const Whiteboard = () => {
   const handleClearAll = useCallback(() => {
     if (!canvasRef.current) return;
     
-    // 1. Clear the canvas visually
     canvasRef.current.clear();
     canvasRef.current.backgroundColor = "#ffffff";
     canvasRef.current.renderAll();
     setCanUndo(false);
     
-    // 2. Clear the state in the boards array (only for the active board)
     setBoards((prevBoards) => {
       const newBoards = [...prevBoards];
       newBoards[activeBoardIndex] = {};
@@ -148,14 +204,11 @@ const Whiteboard = () => {
   // --- Board Management Functions ---
 
   const handleAddBoard = () => {
-    saveBoardState(); // Save current board before switching
+    saveBoardState();
     setBoards((prev) => [...prev, {}]);
-    
-    // Set the new board as active (it will be the last one in the array)
     const newIndex = boards.length;
     setActiveBoardIndex(newIndex);
     
-    // Clear canvas for the new board (since it's initialized as {})
     if (canvasRef.current) {
       canvasRef.current.clear();
       canvasRef.current.backgroundColor = "#ffffff";
@@ -168,15 +221,13 @@ const Whiteboard = () => {
   const handleSwitchBoard = (index: number) => {
     if (index === activeBoardIndex) return;
     
-    saveBoardState(); // Save current board before loading new one
+    saveBoardState();
     setActiveBoardIndex(index);
     
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      // Load the state of the newly selected board
       canvas.loadFromJSON(boards[index], () => {
         canvas.renderAll();
-        // Update undo status based on the loaded board
         setCanUndo(canvas.getObjects().length > 0);
       });
     }
@@ -189,24 +240,19 @@ const Whiteboard = () => {
       return;
     }
     
-    // Determine the new active index before filtering
     let newActiveIndex = activeBoardIndex;
     if (index === activeBoardIndex) {
-      // If deleting the active board, switch to the previous one (or 0 if deleting the first)
       newActiveIndex = Math.max(0, index - 1);
     } else if (index < activeBoardIndex) {
-      // If deleting a board before the active one, shift the active index down
       newActiveIndex = activeBoardIndex - 1;
     }
     
-    // Filter out the deleted board
     const newBoards = boards.filter((_, i) => i !== index);
     setBoards(newBoards);
     setActiveBoardIndex(newActiveIndex);
 
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      // Load the content of the new active board
       canvas.loadFromJSON(newBoards[newActiveIndex], () => {
         canvas.renderAll();
         setCanUndo(canvas.getObjects().length > 0);
@@ -241,9 +287,10 @@ const Whiteboard = () => {
         brushSize={brushSize}
         activeTool={activeTool}
         canvasRef={canvasRef}
+        onReady={() => setCanvasReady(true)}
         onUpdate={() => {
           handleCanvasUpdate();
-          saveBoardState(); // Save state on every drawing update
+          saveBoardState();
         }}
       />
 
