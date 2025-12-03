@@ -8,7 +8,6 @@ import {
   Shapes,
   Type,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -16,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import CircularTooltip from "@/components/CircularTooltip";
+import HoverTooltip from "@/components/HoverTooltip";
 
 // Brush color options
 const COLORS = [
@@ -74,27 +73,27 @@ const Toolbar = ({
       {/* Primary Tool buttons */}
       <div className="flex items-center gap-3">
         {PRIMARY_TOOLS.map((tool) => (
-          <CircularTooltip
+          <HoverTooltip
             key={tool.name}
             label={tool.label}
             onClick={() => onToolChange(tool.name)}
             isActive={activeTool === tool.name}
             aria-label={tool.label}
           >
-            <tool.icon size={18} />
-          </CircularTooltip>
+            <tool.icon size={28} />
+          </HoverTooltip>
         ))}
 
         {/* Shapes Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <CircularTooltip
+            <HoverTooltip
               label={activeShape ? activeShape.label : "Shapes"}
               isActive={isShapeToolActive}
               aria-label="Shapes"
             >
-              {activeShape ? <activeShape.icon size={18} /> : <Shapes size={18} />}
-            </CircularTooltip>
+              {activeShape ? <activeShape.icon size={28} /> : <Shapes size={28} />}
+            </HoverTooltip>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {SHAPE_TOOLS.map((tool) => (
@@ -164,9 +163,9 @@ const Toolbar = ({
       <div className="h-8 w-px bg-border" />
 
       {/* Download button */}
-      <CircularTooltip label="Download" onClick={onDownload}>
-        <Download size={18} />
-      </CircularTooltip>
+      <HoverTooltip label="Download" onClick={onDownload}>
+        <Download size={28} />
+      </HoverTooltip>
     </div>
   );
 };
