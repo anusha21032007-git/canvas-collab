@@ -135,3 +135,117 @@
     box-shadow: 0 2px 16px -2px hsl(var(--toolbar-shadow) / 0.1);
   }
 }
+
+/* Custom Tooltip Styles from Uiverse.io by SnyDeTreves */
+@layer components {
+  .tooltip {
+    --color-background: 59, 130, 246; /* Using app's primary color */
+    --color-text: #fff;
+    --size-diameter: 2.5rem; /* Adjusted size to better fit the toolbar */
+    --size-shadow: 5px;
+  }
+
+  /* Container - Base */
+  .tooltip {
+    --size: var(--size-diameter);
+    align-items: center;
+    border: none;
+    border-radius: var(--size);
+    cursor: pointer;
+    display: flex;
+    fill: var(--color-text);
+    height: var(--size);
+    justify-content: center;
+    position: relative;
+    width: var(--size);
+    background-color: transparent; /* Ensure button itself is transparent */
+    padding: 0;
+    transition: transform 0.2s ease-in-out;
+  }
+  .tooltip:hover {
+    transform: scale(1.1);
+  }
+  .tooltip::before,
+  .tooltip::after {
+    border-radius: inherit;
+    height: var(--size);
+    position: absolute;
+    width: var(--size);
+  }
+  /* Container - Darken */
+  .tooltip::before {
+    background: rgba(var(--color-background), 1);
+    box-shadow: 0 0 var(--size-shadow) rgba(0,0,0,0.5);
+    content: "";
+    z-index: 1;
+    transition: all 0.2s ease-in-out;
+  }
+  /* Container - Darken */
+  .tooltip::after {
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 2;
+  }
+
+  /* Container - Interactions */
+  .tooltip:hover::after {
+    content: "";
+  }
+  .tooltip:active::before {
+    transform: scale(0.95);
+    box-shadow: none;
+  }
+  .tooltip:active::after {
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .tooltip[data-active="true"]::before {
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px rgb(var(--color-background));
+  }
+
+  /* Content */
+  .tooltip__content {
+    --size: calc(0.8 * var(--size-diameter));
+    border-radius: var(--size);
+    height: var(--size);
+    position: relative;
+    width: var(--size);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Label */
+  .tooltip__label {
+    --size: calc(1 * var(--size-diameter));
+    background: radial-gradient(
+      circle at center,
+      transparent 45%,
+      rgb(var(--color-background)) 46%
+    );
+    border-radius: var(--size);
+    font-size: calc(0.25 * var(--size-diameter));
+    height: var(--size);
+    left: calc(50% - var(--size) / 2);
+    pointer-events: none;
+    position: absolute;
+    top: calc(50% - var(--size) / 2);
+    transition: all 0.3s ease-in-out;
+    width: var(--size);
+    opacity: 0; /* Hidden by default */
+    transform: scale(0.8);
+  }
+
+  .tooltip__label text {
+    dominant-baseline: middle;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  /* Label - Interactions */
+  .tooltip:hover .tooltip__label {
+    --size: calc(var(--size-diameter) + 4em); /* Adjusted hover size */
+    box-shadow: 0 0 var(--size-shadow) rgba(0,0,0,0.5);
+    opacity: 1; /* Show on hover */
+    transform: scale(1);
+  }
+}

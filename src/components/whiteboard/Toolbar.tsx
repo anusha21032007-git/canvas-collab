@@ -6,7 +6,7 @@ import {
   Square,
   Minus,
   Shapes,
-  Type, // Importing the Type icon for the Text tool
+  Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,13 +16,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import CircularTooltip from "@/components/CircularTooltip";
 
-// Brush color options with their CSS variable names
+// Brush color options
 const COLORS = [
-  { name: "black", value: "hsl(0, 0%, 10%)", cssVar: "brush-black" },
-  { name: "red", value: "hsl(0, 72%, 51%)", cssVar: "brush-red" },
-  { name: "blue", value: "hsl(217, 91%, 60%)", cssVar: "brush-blue" },
-  { name: "green", value: "hsl(142, 71%, 45%)", cssVar: "brush-green" },
+  { name: "black", value: "hsl(0, 0%, 10%)" },
+  { name: "red", value: "hsl(0, 72%, 51%)" },
+  { name: "blue", value: "hsl(217, 91%, 60%)" },
+  { name: "green", value: "hsl(142, 71%, 45%)" },
 ];
 
 // Brush size options
@@ -32,10 +33,10 @@ const SIZES = [
   { name: "Large", value: 12 },
 ];
 
-// Tool options - separated into primary and shapes
+// Tool options
 const PRIMARY_TOOLS = [
   { name: "pencil", icon: Paintbrush, label: "Draw" },
-  { name: "text", icon: Type, label: "Text" }, // New Text tool
+  { name: "text", icon: Type, label: "Text" },
   { name: "eraser", icon: Eraser, label: "Eraser" },
 ];
 
@@ -55,9 +56,6 @@ interface ToolbarProps {
   onDownload: () => void;
 }
 
-/**
- * Toolbar component with drawing tools: color picker, brush size, eraser, and download
- */
 const Toolbar = ({
   activeColor,
   brushSize,
@@ -67,62 +65,43 @@ const Toolbar = ({
   onToolChange,
   onDownload,
 }: ToolbarProps) => {
-  const isDrawingTool =
-    activeTool === "pencil" ||
-    activeTool === "rectangle" ||
-    activeTool === "circle" ||
-    activeTool === "line" ||
-    activeTool === "text"; // Include text for color/size logic
-
+  const isDrawingTool = ["pencil", "rectangle", "circle", "line", "text"].includes(activeTool);
   const isShapeToolActive = SHAPE_TOOLS.some(t => t.name === activeTool);
   const activeShape = SHAPE_TOOLS.find(t => t.name === activeTool);
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
-      {/* Primary Tool buttons (Pencil, Text, Eraser) */}
-      <div className="flex items-center gap-2">
+      {/* Primary Tool buttons */}
+      <div className="flex items-center gap-3">
         {PRIMARY_TOOLS.map((tool) => (
-          <Button
+          <CircularTooltip
             key={tool.name}
-            variant={activeTool === tool.name ? "default" : "secondary"}
-            size="sm"
+            label={tool.label}
             onClick={() => onToolChange(tool.name)}
-            className="tool-transition"
+            isActive={activeTool === tool.name}
             aria-label={tool.label}
           >
             <tool.icon size={18} />
-            <span className="ml-1.5 hidden sm:inline">{tool.label}</span>
-          </Button>
+          </CircularTooltip>
         ))}
 
         {/* Shapes Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant={isShapeToolActive ? "default" : "secondary"}
-              size="sm"
-              className="tool-transition"
+            <CircularTooltip
+              label={activeShape ? activeShape.label : "Shapes"}
+              isActive={isShapeToolActive}
               aria-label="Shapes"
             >
-              {activeShape ? (
-                <activeShape.icon size={18} />
-              ) : (
-                <Shapes size={18} />
-              )}
-              <span className="ml-1.5 hidden sm:inline">
-                {activeShape ? activeShape.label : "Shapes"}
-              </span>
-            </Button>
+              {activeShape ? <activeShape.icon size={18} /> : <Shapes size={18} />}
+            </CircularTooltip>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {SHAPE_TOOLS.map((tool) => (
               <DropdownMenuItem
                 key={tool.name}
                 onClick={() => onToolChange(tool.name)}
-                className={cn(
-                  "cursor-pointer",
-                  activeTool === tool.name && "bg-accent text-accent-foreground"
-                )}
+                className={cn("cursor-pointer", activeTool === tool.name && "bg-accent text-accent-foreground")}
               >
                 <tool.icon className="mr-2 h-4 w-4" />
                 <span>{tool.label}</span>
@@ -135,7 +114,7 @@ const Toolbar = ({
       {/* Divider */}
       <div className="h-8 w-px bg-border" />
 
-      {/* Color picker section */}
+      {/* Color picker */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground mr-1">Color</span>
         <div className="flex items-center gap-1.5">
@@ -175,11 +154,7 @@ const Toolbar = ({
               )}
               aria-label={`Select ${size.name} brush size`}
             >
-              <Circle
-                size={size.value + 8}
-                fill="currentColor"
-                strokeWidth={0}
-              />
+              <Circle size={size.value + 8} fill="currentColor" strokeWidth={0} />
             </button>
           ))}
         </div>
@@ -189,15 +164,9 @@ const Toolbar = ({
       <div className="h-8 w-px bg-border" />
 
       {/* Download button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onDownload}
-        className="tool-transition"
-      >
+      <CircularTooltip label="Download" onClick={onDownload}>
         <Download size={18} />
-        <span className="ml-1.5">Download</span>
-      </Button>
+      </CircularTooltip>
     </div>
   );
 };
