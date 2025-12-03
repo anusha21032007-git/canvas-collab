@@ -135,3 +135,104 @@
     box-shadow: 0 2px 16px -2px hsl(var(--toolbar-shadow) / 0.1);
   }
 }
+
+/* Custom Icon Tooltip Styles */
+@layer components {
+  .icon-content {
+    position: relative;
+  }
+  .icon-content .tooltip {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 15px;
+    opacity: 0;
+    visibility: hidden;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .icon-content:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    top: -40px;
+  }
+  .icon-content button {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 20%;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    transition: all 0.3s ease-in-out;
+  }
+  .icon-content button:hover {
+    box-shadow: 3px 2px 45px 0px hsla(var(--foreground) / 0.12);
+  }
+  .icon-content button svg {
+    position: relative;
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    transition: color 0.3s ease-in-out;
+  }
+  .icon-content button:hover svg {
+    color: white;
+  }
+  .icon-content button .filled {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    background-color: hsl(var(--primary));
+    transition: all 0.3s ease-in-out;
+  }
+  .icon-content button:hover .filled {
+    height: 100%;
+  }
+  .icon-content button.active {
+     box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px var(--active-color, hsl(var(--primary)));
+  }
+
+  /* Tool Colors */
+  .icon-content button[data-tool="pencil"] { --active-color: hsl(var(--primary)); }
+  .icon-content button[data-tool="pencil"] .filled,
+  .icon-content:has(button[data-tool="pencil"]) .tooltip {
+    background-color: hsl(var(--primary));
+  }
+  
+  .icon-content button[data-tool="text"] { --active-color: hsl(var(--success)); }
+  .icon-content button[data-tool="text"] .filled,
+  .icon-content:has(button[data-tool="text"]) .tooltip {
+    background-color: hsl(var(--success));
+  }
+
+  .icon-content button[data-tool="shapes"] { --active-color: hsl(var(--warning)); }
+  .icon-content button[data-tool="shapes"] .filled,
+  .icon-content:has(button[data-tool="shapes"]) .tooltip {
+    background-color: hsl(var(--warning));
+  }
+
+  .icon-content button[data-tool="eraser"] { --active-color: hsl(var(--destructive)); }
+  .icon-content button[data-tool="eraser"] .filled,
+  .icon-content:has(button[data-tool="eraser"]) .tooltip {
+    background-color: hsl(var(--destructive));
+  }
+
+  .icon-content button[data-tool="download"] { --active-color: hsl(var(--muted-foreground)); }
+  .icon-content button[data-tool="download"] .filled,
+  .icon-content:has(button[data-tool="download"]) .tooltip {
+    background-color: hsl(var(--muted-foreground));
+  }
+}

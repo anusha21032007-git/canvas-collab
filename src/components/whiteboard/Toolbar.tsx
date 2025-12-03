@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import HoverTooltip from "@/components/HoverTooltip";
+import IconTooltip from "@/components/IconTooltip";
 
 // Brush color options
 const COLORS = [
@@ -73,41 +73,46 @@ const Toolbar = ({
       {/* Primary Tool buttons */}
       <div className="flex items-center gap-3">
         {PRIMARY_TOOLS.map((tool) => (
-          <HoverTooltip
+          <IconTooltip
             key={tool.name}
             label={tool.label}
+            toolName={tool.name}
             onClick={() => onToolChange(tool.name)}
             isActive={activeTool === tool.name}
             aria-label={tool.label}
           >
-            <tool.icon size={28} />
-          </HoverTooltip>
+            <tool.icon />
+          </IconTooltip>
         ))}
 
         {/* Shapes Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <HoverTooltip
-              label={activeShape ? activeShape.label : "Shapes"}
-              isActive={isShapeToolActive}
-              aria-label="Shapes"
-            >
-              {activeShape ? <activeShape.icon size={28} /> : <Shapes size={28} />}
-            </HoverTooltip>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {SHAPE_TOOLS.map((tool) => (
-              <DropdownMenuItem
-                key={tool.name}
-                onClick={() => onToolChange(tool.name)}
-                className={cn("cursor-pointer", activeTool === tool.name && "bg-accent text-accent-foreground")}
+        <div className="icon-content">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                data-tool="shapes"
+                className={cn(isShapeToolActive && "active")}
+                aria-label="Shapes"
               >
-                <tool.icon className="mr-2 h-4 w-4" />
-                <span>{tool.label}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <div className="filled"></div>
+                {activeShape ? <activeShape.icon /> : <Shapes />}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {SHAPE_TOOLS.map((tool) => (
+                <DropdownMenuItem
+                  key={tool.name}
+                  onClick={() => onToolChange(tool.name)}
+                  className={cn("cursor-pointer", activeTool === tool.name && "bg-accent text-accent-foreground")}
+                >
+                  <tool.icon className="mr-2 h-4 w-4" />
+                  <span>{tool.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="tooltip">{activeShape ? activeShape.label : "Shapes"}</div>
+        </div>
       </div>
 
       {/* Divider */}
@@ -163,9 +168,13 @@ const Toolbar = ({
       <div className="h-8 w-px bg-border" />
 
       {/* Download button */}
-      <HoverTooltip label="Download" onClick={onDownload}>
-        <Download size={28} />
-      </HoverTooltip>
+      <IconTooltip
+        label="Download"
+        toolName="download"
+        onClick={onDownload}
+      >
+        <Download />
+      </IconTooltip>
     </div>
   );
 };
