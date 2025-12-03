@@ -144,26 +144,35 @@ const Whiteboard = () => {
   // --- Board Management Functions ---
 
   const handleAddBoard = () => {
-    saveBoardState();
+    saveBoardState(); // Save current board before switching
     setBoards((prev) => [...prev, {}]);
-    setActiveBoardIndex(boards.length);
+    
+    // Set the new board as active (it will be the last one in the array)
+    const newIndex = boards.length;
+    setActiveBoardIndex(newIndex);
+    
+    // Clear canvas for the new board (since it's initialized as {})
     if (canvasRef.current) {
       canvasRef.current.clear();
       canvasRef.current.backgroundColor = "#ffffff";
       canvasRef.current.renderAll();
       setCanUndo(false);
     }
-    toast.success(`Switched to new Board ${boards.length + 1}`);
+    toast.success(`Switched to new Board ${newIndex + 1}`);
   };
 
   const handleSwitchBoard = (index: number) => {
     if (index === activeBoardIndex) return;
-    saveBoardState();
+    
+    saveBoardState(); // Save current board before loading new one
     setActiveBoardIndex(index);
+    
     if (canvasRef.current) {
       const canvas = canvasRef.current;
+      // Load the state of the newly selected board
       canvas.loadFromJSON(boards[index], () => {
         canvas.renderAll();
+        // Update undo status based on the loaded board
         setCanUndo(canvas.getObjects().length > 0);
       });
     }
@@ -175,21 +184,25 @@ const Whiteboard = () => {
       toast.error("Cannot delete the last board.");
       return;
     }
-    saveBoardState();
-    const newBoards = boards.filter((_, i) => i !== index);
-    setBoards(newBoards);
-
+    
+    // Determine the new active index before filtering
     let newActiveIndex = activeBoardIndex;
     if (index === activeBoardIndex) {
+      // If deleting the active board, switch to the previous one (or 0 if deleting the first)
       newActiveIndex = Math.max(0, index - 1);
     } else if (index < activeBoardIndex) {
+      // If deleting a board before the active one, shift the active index down
       newActiveIndex = activeBoardIndex - 1;
     }
     
+    // Filter out the deleted board
+    const newBoards = boards.filter((_, i) => i !== index);
+    setBoards(newBoards);
     setActiveBoardIndex(newActiveIndex);
 
     if (canvasRef.current) {
       const canvas = canvasRef.current;
+      // Load the content of the new active board
       canvas.loadFromJSON(newBoards[newActiveIndex], () => {
         canvas.renderAll();
         setCanUndo(canvas.getObjects().length > 0);
@@ -226,7 +239,7 @@ const Whiteboard = () => {
         canvasRef={canvasRef}
         onUpdate={() => {
           handleCanvasUpdate();
-          saveBoardState();
+          saveBoardState(); // Save state on every drawing update
         }}
       />
 
