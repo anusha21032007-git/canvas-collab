@@ -13,7 +13,7 @@ const Whiteboard = () => {
   // Drawing state
   const [brushColor, setBrushColor] = useState("hsl(0, 0%, 10%)");
   const [brushSize, setBrushSize] = useState(6);
-  const [isEraser, setIsEraser] = useState(false);
+  const [activeTool, setActiveTool] = useState("pencil");
 
   // Mock user count (would come from Socket.io in real implementation)
   const [userCount] = useState(3);
@@ -27,17 +27,19 @@ const Whiteboard = () => {
   // Handle color selection
   const handleColorChange = useCallback((color: string) => {
     setBrushColor(color);
-    setIsEraser(false); // Switch back to draw mode when selecting color
-  }, []);
+    if (activeTool === "eraser") {
+      setActiveTool("pencil"); // Switch back to draw mode when selecting color
+    }
+  }, [activeTool]);
 
   // Handle brush size change
   const handleSizeChange = useCallback((size: number) => {
     setBrushSize(size);
   }, []);
 
-  // Toggle eraser mode
-  const handleEraserToggle = useCallback(() => {
-    setIsEraser((prev) => !prev);
+  // Handle tool change
+  const handleToolChange = useCallback((tool: string) => {
+    setActiveTool(tool);
   }, []);
 
   // Clear all drawings from the canvas
@@ -60,10 +62,7 @@ const Whiteboard = () => {
       const lastObject = objects[objects.length - 1];
       canvasRef.current.remove(lastObject);
       canvasRef.current.renderAll();
-
-      if (objects.length <= 1) {
-        setCanUndo(false);
-      }
+      setCanUndo(canvasRef.current.getObjects().length > 0);
       toast("Undo successful");
     }
   }, []);
@@ -91,10 +90,9 @@ const Whiteboard = () => {
   }, []);
 
   // Track when canvas has content for undo functionality
-  // This would normally use canvas events, simplified here
   const handleCanvasUpdate = useCallback(() => {
-    if (canvasRef.current && canvasRef.current.getObjects().length > 0) {
-      setCanUndo(true);
+    if (canvasRef.current) {
+      setCanUndo(canvasRef.current.getObjects().length > 0);
     }
   }, []);
 
@@ -112,10 +110,10 @@ const Whiteboard = () => {
       <Toolbar
         activeColor={brushColor}
         brushSize={brushSize}
-        isEraser={isEraser}
+        activeTool={activeTool}
         onColorChange={handleColorChange}
         onSizeChange={handleSizeChange}
-        onEraserToggle={handleEraserToggle}
+        onToolChange={handleToolChange}
         onDownload={handleDownload}
       />
 
@@ -123,8 +121,9 @@ const Whiteboard = () => {
       <Canvas
         brushColor={brushColor}
         brushSize={brushSize}
-        isEraser={isEraser}
+        activeTool={activeTool}
         canvasRef={canvasRef}
+        onUpdate={handleCanvasUpdate}
       />
 
       {/* Footer with instructions */}

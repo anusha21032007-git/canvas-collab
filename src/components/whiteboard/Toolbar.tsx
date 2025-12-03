@@ -1,4 +1,11 @@
-import { Paintbrush, Eraser, Download, Circle } from "lucide-react";
+import {
+  Paintbrush,
+  Eraser,
+  Download,
+  Circle,
+  Square,
+  Minus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +24,22 @@ const SIZES = [
   { name: "Large", value: 12 },
 ];
 
+// Tool options
+const TOOLS = [
+  { name: "pencil", icon: Paintbrush, label: "Draw" },
+  { name: "rectangle", icon: Square, label: "Rectangle" },
+  { name: "circle", icon: Circle, label: "Circle" },
+  { name: "line", icon: Minus, label: "Line" },
+  { name: "eraser", icon: Eraser, label: "Eraser" },
+];
+
 interface ToolbarProps {
   activeColor: string;
   brushSize: number;
-  isEraser: boolean;
+  activeTool: string;
   onColorChange: (color: string) => void;
   onSizeChange: (size: number) => void;
-  onEraserToggle: () => void;
+  onToolChange: (tool: string) => void;
   onDownload: () => void;
 }
 
@@ -33,14 +49,40 @@ interface ToolbarProps {
 const Toolbar = ({
   activeColor,
   brushSize,
-  isEraser,
+  activeTool,
   onColorChange,
   onSizeChange,
-  onEraserToggle,
+  onToolChange,
   onDownload,
 }: ToolbarProps) => {
+  const isDrawingTool =
+    activeTool === "pencil" ||
+    activeTool === "rectangle" ||
+    activeTool === "circle" ||
+    activeTool === "line";
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
+      {/* Tool buttons */}
+      <div className="flex items-center gap-2">
+        {TOOLS.map((tool) => (
+          <Button
+            key={tool.name}
+            variant={activeTool === tool.name ? "default" : "secondary"}
+            size="sm"
+            onClick={() => onToolChange(tool.name)}
+            className="tool-transition"
+            aria-label={tool.label}
+          >
+            <tool.icon size={18} />
+            <span className="ml-1.5 hidden sm:inline">{tool.label}</span>
+          </Button>
+        ))}
+      </div>
+
+      {/* Divider */}
+      <div className="h-8 w-px bg-border" />
+
       {/* Color picker section */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground mr-1">Color</span>
@@ -51,7 +93,7 @@ const Toolbar = ({
               onClick={() => onColorChange(color.value)}
               className={cn(
                 "w-8 h-8 rounded-full tool-transition border-2",
-                activeColor === color.value && !isEraser
+                activeColor === color.value && isDrawingTool
                   ? "border-tool-active scale-110 shadow-md"
                   : "border-transparent hover:scale-105"
               )}
@@ -89,34 +131,6 @@ const Toolbar = ({
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Divider */}
-      <div className="h-8 w-px bg-border" />
-
-      {/* Tool buttons */}
-      <div className="flex items-center gap-2">
-        {/* Draw mode button */}
-        <Button
-          variant={!isEraser ? "default" : "secondary"}
-          size="sm"
-          onClick={() => isEraser && onEraserToggle()}
-          className="tool-transition"
-        >
-          <Paintbrush size={18} />
-          <span className="ml-1.5">Draw</span>
-        </Button>
-
-        {/* Eraser toggle button */}
-        <Button
-          variant={isEraser ? "default" : "secondary"}
-          size="sm"
-          onClick={() => !isEraser && onEraserToggle()}
-          className="tool-transition"
-        >
-          <Eraser size={18} />
-          <span className="ml-1.5">Eraser</span>
-        </Button>
       </div>
 
       {/* Divider */}
