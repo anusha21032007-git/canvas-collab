@@ -5,9 +5,16 @@ import {
   Circle,
   Square,
   Minus,
+  Shapes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Brush color options with their CSS variable names
 const COLORS = [
@@ -24,13 +31,16 @@ const SIZES = [
   { name: "Large", value: 12 },
 ];
 
-// Tool options
-const TOOLS = [
+// Tool options - separated into primary and shapes
+const PRIMARY_TOOLS = [
   { name: "pencil", icon: Paintbrush, label: "Draw" },
+  { name: "eraser", icon: Eraser, label: "Eraser" },
+];
+
+const SHAPE_TOOLS = [
   { name: "rectangle", icon: Square, label: "Rectangle" },
   { name: "circle", icon: Circle, label: "Circle" },
   { name: "line", icon: Minus, label: "Line" },
-  { name: "eraser", icon: Eraser, label: "Eraser" },
 ];
 
 interface ToolbarProps {
@@ -61,11 +71,14 @@ const Toolbar = ({
     activeTool === "circle" ||
     activeTool === "line";
 
+  const isShapeToolActive = SHAPE_TOOLS.some(t => t.name === activeTool);
+  const activeShape = SHAPE_TOOLS.find(t => t.name === activeTool);
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 bg-toolbar border-b border-border">
-      {/* Tool buttons */}
+      {/* Primary Tool buttons (Pencil, Eraser) */}
       <div className="flex items-center gap-2">
-        {TOOLS.map((tool) => (
+        {PRIMARY_TOOLS.map((tool) => (
           <Button
             key={tool.name}
             variant={activeTool === tool.name ? "default" : "secondary"}
@@ -78,6 +91,42 @@ const Toolbar = ({
             <span className="ml-1.5 hidden sm:inline">{tool.label}</span>
           </Button>
         ))}
+
+        {/* Shapes Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isShapeToolActive ? "default" : "secondary"}
+              size="sm"
+              className="tool-transition"
+              aria-label="Shapes"
+            >
+              {activeShape ? (
+                <activeShape.icon size={18} />
+              ) : (
+                <Shapes size={18} />
+              )}
+              <span className="ml-1.5 hidden sm:inline">
+                {activeShape ? activeShape.label : "Shapes"}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {SHAPE_TOOLS.map((tool) => (
+              <DropdownMenuItem
+                key={tool.name}
+                onClick={() => onToolChange(tool.name)}
+                className={cn(
+                  "cursor-pointer",
+                  activeTool === tool.name && "bg-accent text-accent-foreground"
+                )}
+              >
+                <tool.icon className="mr-2 h-4 w-4" />
+                <span>{tool.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Divider */}
