@@ -1,17 +1,19 @@
-import { Users, Trash2, Undo2 } from "lucide-react";
+import { Users, Trash2, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   userCount: number;
   onClearAll: () => void;
   onUndo: () => void;
+  onRedo: () => void;
   canUndo: boolean;
+  canRedo: boolean;
 }
 
 /**
  * Header component displaying the app title, user count, and action buttons
  */
-const Header = ({ userCount, onClearAll, onUndo, canUndo }: HeaderProps) => {
+const Header = ({ userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: HeaderProps) => {
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-card border-b border-border toolbar-shadow">
       {/* App title */}
@@ -40,6 +42,18 @@ const Header = ({ userCount, onClearAll, onUndo, canUndo }: HeaderProps) => {
         >
           <Undo2 size={18} />
           <span className="ml-1.5 hidden sm:inline">Undo</span>
+        </Button>
+
+        {/* Redo button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="tool-transition"
+        >
+          <Redo2 size={18} />
+          <span className="ml-1.5 hidden sm:inline">Redo</span>
         </Button>
 
         {/* Clear all button */}

@@ -27,14 +27,26 @@ const Whiteboard = () => {
   // Mock user count
   const [userCount] = useState(3);
 
-  // Undo history tracking
+  // Undo/Redo state
+  const boardHistory = useRef<Array<Array<object>>>([[{}]]);
+  const boardHistoryIndex = useRef<Array<number>>([0]);
+  const isRestoringHistory = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // Reference to the Fabric.js canvas instance
   const canvasRef = useRef<FabricCanvas | null>(null);
   const [isCanvasReady, setCanvasReady] = useState(false);
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef(getSessionId());
+
+  // Effect to update undo/redo buttons state whenever the history or active board changes
+  useEffect(() => {
+    const history = boardHistory.current[activeBoardIndex] || [];
+    const index = boardHistoryIndex.current[activeBoardIndex] ?? -1;
+    setCanUndo(index > 0);
+    setCanRedo(index < history.length - 1);
+  }, [activeBoardIndex, boards]); // `boards` is a proxy for history changes
 
   // Effect to load data from Supabase when the canvas is ready
   useEffect(() => {
@@ -67,17 +79,21 @@ const Whiteboard = () => {
           if (data && data.length > 0) {
             const loadedBoards = data.map((b) => b.content || {});
             setBoards(loadedBoards);
+            boardHistory.current = loadedBoards.map((board) => [board]);
+            boardHistoryIndex.current = loadedBoards.map(() => 0);
+
             const finalIndex = activeIndex < loadedBoards.length ? activeIndex : 0;
             setActiveBoardIndex(finalIndex);
 
             canvas.loadFromJSON(loadedBoards[finalIndex] || {}, () => {
               canvas.renderAll();
-              setCanUndo(canvas.getObjects().length > 0);
             });
             toast.success("Welcome back! Your work has been restored.", { id: loadingToast });
           } else {
             setBoards([{}]);
             setActiveBoardIndex(0);
+            boardHistory.current = [[{}]];
+            boardHistoryIndex.current = [0];
             await supabase.from("boards").insert({ session_id: sessionId, board_index: 0, content: {} });
             toast.success("A new whiteboard is ready for you!", { id: loadingToast });
           }
@@ -102,27 +118,13 @@ const Whiteboard = () => {
     }
   }, [activeBoardIndex]);
 
-  const handleCanvasUpdate = useCallback(() => {
-    if (canvasRef.current) {
-      setCanUndo(canvasRef.current.getObjects().length > 0);
-    }
-  }, []);
-
-  const saveBoardState = useCallback(async () => {
-    if (!canvasRef.current || isInitialLoadRef.current) return null;
-    const currentState = canvasRef.current.toJSON();
-
-    setBoards((prevBoards) => {
-      const newBoards = [...prevBoards];
-      newBoards[activeBoardIndex] = currentState;
-      return newBoards;
-    });
-
+  const saveBoardStateToSupabase = useCallback(async (stateToSave: object, boardIndex: number) => {
+    if (isInitialLoadRef.current) return;
     const { error } = await supabase.from("boards").upsert(
       {
         session_id: sessionIdRef.current,
-        board_index: activeBoardIndex,
-        content: currentState,
+        board_index: boardIndex,
+        content: stateToSave,
       },
       { onConflict: "session_id,board_index" },
     );
@@ -131,51 +133,93 @@ const Whiteboard = () => {
       toast.error("Failed to save changes.");
       console.error("Error saving board state:", error);
     }
-    return currentState;
-  }, [activeBoardIndex]);
+  }, []);
 
-  const handleColorChange = useCallback((color: string) => {
-    setBrushColor(color);
-    if (activeTool === "eraser") setActiveTool("pencil");
-  }, [activeTool]);
+  const updateHistoryAndSave = useCallback(async () => {
+    if (!canvasRef.current || isRestoringHistory.current) return;
+
+    const currentState = canvasRef.current.toJSON();
+    const history = boardHistory.current[activeBoardIndex];
+    const index = boardHistoryIndex.current[activeBoardIndex];
+
+    const newHistory = history.slice(0, index + 1);
+    newHistory.push(currentState);
+    boardHistory.current[activeBoardIndex] = newHistory;
+    boardHistoryIndex.current[activeBoardIndex] = newHistory.length - 1;
+
+    setBoards((prevBoards) => {
+      const newBoards = [...prevBoards];
+      newBoards[activeBoardIndex] = currentState;
+      return newBoards;
+    });
+
+    await saveBoardStateToSupabase(currentState, activeBoardIndex);
+  }, [activeBoardIndex, saveBoardStateToSupabase]);
+
+  const handleUndo = useCallback(async () => {
+    const index = boardHistoryIndex.current[activeBoardIndex];
+    if (index <= 0) return;
+
+    isRestoringHistory.current = true;
+    const newIndex = index - 1;
+    boardHistoryIndex.current[activeBoardIndex] = newIndex;
+    const prevState = boardHistory.current[activeBoardIndex][newIndex];
+
+    canvasRef.current?.loadFromJSON(prevState, async () => {
+      canvasRef.current?.renderAll();
+      setBoards((prev) => {
+        const newBoards = [...prev];
+        newBoards[activeBoardIndex] = prevState;
+        return newBoards;
+      });
+      await saveBoardStateToSupabase(prevState, activeBoardIndex);
+      isRestoringHistory.current = false;
+      toast("Undo successful");
+    });
+  }, [activeBoardIndex, saveBoardStateToSupabase]);
+
+  const handleRedo = useCallback(async () => {
+    const history = boardHistory.current[activeBoardIndex];
+    const index = boardHistoryIndex.current[activeBoardIndex];
+    if (index >= history.length - 1) return;
+
+    isRestoringHistory.current = true;
+    const newIndex = index + 1;
+    boardHistoryIndex.current[activeBoardIndex] = newIndex;
+    const nextState = history[newIndex];
+
+    canvasRef.current?.loadFromJSON(nextState, async () => {
+      canvasRef.current?.renderAll();
+      setBoards((prev) => {
+        const newBoards = [...prev];
+        newBoards[activeBoardIndex] = nextState;
+        return newBoards;
+      });
+      await saveBoardStateToSupabase(nextState, activeBoardIndex);
+      isRestoringHistory.current = false;
+      toast("Redo successful");
+    });
+  }, [activeBoardIndex, saveBoardStateToSupabase]);
+
+  const handleColorChange = useCallback(
+    (color: string) => {
+      setBrushColor(color);
+      if (activeTool === "eraser") setActiveTool("pencil");
+    },
+    [activeTool],
+  );
 
   const handleSizeChange = useCallback((size: number) => setBrushSize(size), []);
   const handleToolChange = useCallback((tool: string) => setActiveTool(tool), []);
 
   const handleClearAll = useCallback(async () => {
     if (!canvasRef.current) return;
-
     canvasRef.current.clear();
     canvasRef.current.backgroundColor = "#ffffff";
     canvasRef.current.renderAll();
-    setCanUndo(false);
-
-    setBoards((prevBoards) => {
-      const newBoards = [...prevBoards];
-      newBoards[activeBoardIndex] = {};
-      return newBoards;
-    });
-
-    const { error } = await supabase.from("boards").update({ content: {} }).match({
-      session_id: sessionIdRef.current,
-      board_index: activeBoardIndex,
-    });
-
-    if (error) toast.error("Failed to clear board.");
-    else toast.success("Board cleared!");
-  }, [activeBoardIndex]);
-
-  const handleUndo = useCallback(async () => {
-    if (!canvasRef.current) return;
-    const objects = canvasRef.current.getObjects();
-    if (objects.length > 0) {
-      canvasRef.current.remove(objects[objects.length - 1]);
-      canvasRef.current.renderAll();
-      setCanUndo(canvasRef.current.getObjects().length > 0);
-      await saveBoardState();
-      toast("Undo successful");
-    }
-  }, [saveBoardState]);
+    await updateHistoryAndSave();
+    toast.success("Board cleared!");
+  }, [updateHistoryAndSave]);
 
   const handleDownload = useCallback(() => {
     if (!canvasRef.current) return;
@@ -201,14 +245,13 @@ const Whiteboard = () => {
           canvas.centerObject(img);
           canvas.add(img);
           canvas.renderAll();
-          handleCanvasUpdate();
-          await saveBoardState();
+          await updateHistoryAndSave();
           toast.success("Image added to canvas!");
         });
       };
       reader.readAsDataURL(file);
     },
-    [handleCanvasUpdate, saveBoardState],
+    [updateHistoryAndSave],
   );
 
   const handleBackgroundUpload = useCallback(
@@ -225,24 +268,18 @@ const Whiteboard = () => {
               scaleY: canvas.height / (img.height || 1),
             });
           }
-          await saveBoardState();
+          await updateHistoryAndSave();
           toast.success("Background image updated!");
         });
       };
       reader.readAsDataURL(file);
     },
-    [saveBoardState],
+    [updateHistoryAndSave],
   );
 
   const handleAddBoard = async () => {
-    const savedState = await saveBoardState();
-
-    const currentBoards = [...boards];
-    if (savedState) {
-      currentBoards[activeBoardIndex] = savedState;
-    }
-
-    const newIndex = currentBoards.length;
+    await updateHistoryAndSave();
+    const newIndex = boards.length;
 
     const { error } = await supabase.from("boards").insert({
       session_id: sessionIdRef.current,
@@ -255,14 +292,15 @@ const Whiteboard = () => {
       return;
     }
 
-    setBoards([...currentBoards, {}]);
+    boardHistory.current.push([{}]);
+    boardHistoryIndex.current.push(0);
+    setBoards((prev) => [...prev, {}]);
     setActiveBoardIndex(newIndex);
 
     if (canvasRef.current) {
       canvasRef.current.clear();
       canvasRef.current.backgroundColor = "#ffffff";
       canvasRef.current.renderAll();
-      setCanUndo(false);
     }
     toast.success(`Switched to new Board ${newIndex + 1}`);
   };
@@ -270,20 +308,14 @@ const Whiteboard = () => {
   const handleSwitchBoard = async (index: number) => {
     if (index === activeBoardIndex) return;
 
-    const savedState = await saveBoardState();
-
-    const currentBoards = [...boards];
-    if (savedState) {
-      currentBoards[activeBoardIndex] = savedState;
-    }
-
+    await updateHistoryAndSave();
     setActiveBoardIndex(index);
 
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      canvas.loadFromJSON(currentBoards[index] || {}, () => {
+      const boardState = boardHistory.current[index][boardHistoryIndex.current[index]];
+      canvas.loadFromJSON(boardState || {}, () => {
         canvas.renderAll();
-        setCanUndo(canvas.getObjects().length > 0);
       });
     }
     toast.info(`Switched to Board ${index + 1}`);
@@ -317,6 +349,9 @@ const Whiteboard = () => {
     }
     await Promise.all(updates);
 
+    boardHistory.current.splice(index, 1);
+    boardHistoryIndex.current.splice(index, 1);
+
     let newActiveIndex = activeBoardIndex;
     if (index === activeBoardIndex) newActiveIndex = Math.max(0, index - 1);
     else if (index < activeBoardIndex) newActiveIndex = activeBoardIndex - 1;
@@ -327,9 +362,9 @@ const Whiteboard = () => {
 
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      canvas.loadFromJSON(newBoards[newActiveIndex] || {}, () => {
+      const boardState = boardHistory.current[newActiveIndex][boardHistoryIndex.current[newActiveIndex]];
+      canvas.loadFromJSON(boardState || {}, () => {
         canvas.renderAll();
-        setCanUndo(canvas.getObjects().length > 0);
       });
     }
     toast.success(`Board ${index + 1} deleted.`);
@@ -339,14 +374,16 @@ const Whiteboard = () => {
     setCanvasReady(true);
   }, []);
 
-  const handleCanvasUpdateAndSave = useCallback(async () => {
-    handleCanvasUpdate();
-    await saveBoardState();
-  }, [handleCanvasUpdate, saveBoardState]);
-
   return (
     <div className="flex flex-col h-screen bg-background">
-      <Header userCount={userCount} onClearAll={handleClearAll} onUndo={handleUndo} canUndo={canUndo} />
+      <Header
+        userCount={userCount}
+        onClearAll={handleClearAll}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
       <Toolbar
         activeColor={brushColor}
         brushSize={brushSize}
@@ -364,7 +401,7 @@ const Whiteboard = () => {
         activeTool={activeTool}
         canvasRef={canvasRef}
         onReady={handleCanvasReady}
-        onUpdate={handleCanvasUpdateAndSave}
+        onUpdate={updateHistoryAndSave}
       />
       <BoardControls
         boardCount={boards.length}
