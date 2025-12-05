@@ -1,8 +1,10 @@
-import { Users, Trash2, Undo2, Redo2 } from "lucide-react";
+import { Users, Trash2, Undo2, Redo2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 interface HeaderProps {
+  roomId: string;
   userCount: number;
   onClearAll: () => void;
   onUndo: () => void;
@@ -14,7 +16,13 @@ interface HeaderProps {
 /**
  * Header component displaying the app title, user count, and action buttons
  */
-const Header = ({ userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: HeaderProps) => {
+const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: HeaderProps) => {
+  const handleShare = () => {
+    const inviteLink = `${window.location.origin}/whiteboard/${roomId}`;
+    navigator.clipboard.writeText(inviteLink);
+    toast.success("Invitation link copied to clipboard!");
+  };
+
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-card border-b border-border toolbar-shadow">
       {/* App title */}
@@ -32,6 +40,23 @@ const Header = ({ userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: Hea
           </span>
           <span className="w-2 h-2 bg-success rounded-full animate-pulse-soft" />
         </div>
+
+        {/* Share button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleShare}
+              className="tool-transition"
+            >
+              <Share2 size={18} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Share & Invite</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Undo button */}
         <Tooltip>

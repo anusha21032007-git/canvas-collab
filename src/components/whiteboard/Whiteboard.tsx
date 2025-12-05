@@ -81,13 +81,34 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
     await saveBoardStateToSupabase(currentState);
   }, [saveBoardStateToSupabase]);
 
-  // Effect to load data from Supabase when the canvas is ready
+  // Effect to ensure membership and load data from Supabase
   useEffect(() => {
     if (isCanvasReady && user) {
-      const loadData = async () => {
-        const loadingToast = toast.loading("Loading whiteboard...");
+      const setupBoard = async () => {
+        const loadingToast = toast.loading("Joining and loading whiteboard...");
 
         try {
+          // Step 1: Ensure user is a member of the room
+          const { data: membership, error: membershipError } = await supabase
+            .from("memberships")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("room_id", roomId)
+            .maybeSingle();
+
+          if (membershipError) throw new Error(`Membership check failed: ${membershipError.message}`);
+
+          if (!membership) {
+            // User is not a member, so add them as an editor
+            const { error: insertError } = await supabase
+              .from("memberships")
+              .insert({ user_id: user.id, room_id: roomId, role: "editor" });
+
+            if (insertError) throw new Error(`Failed to join room: ${insertError.message}`);
+            toast.info("You've been added to this whiteboard as an editor.", { id: loadingToast });
+          }
+
+          // Step 2: Load board content
           const { data, error } = await supabase
             .from("boards")
             .select("content")
@@ -111,12 +132,13 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
             toast.success("Whiteboard loaded!", { id: loadingToast });
           });
         } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
           console.error("Failed to load whiteboard state", err);
-          toast.error("Could not load whiteboard.", { id: loadingToast });
+          toast.error(`Could not load whiteboard: ${errorMessage}`, { id: loadingToast });
         }
       };
 
-      loadData();
+      setupBoard();
     }
   }, [isCanvasReady, roomId, user]);
 
@@ -236,6 +258,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         </Button>
       </div>
       <Header
+        roomId={roomId}
         userCount={userCount}
         onClearAll={handleClearAll}
         onUndo={handleUndo}
