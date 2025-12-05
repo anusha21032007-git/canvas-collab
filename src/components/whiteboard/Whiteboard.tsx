@@ -43,6 +43,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
   const canvasRef = useRef<FabricCanvas | null>(null);
   const [isCanvasReady, setCanvasReady] = useState(false);
   const isInitialLoadRef = useRef(true);
+  const hasLoadedBoard = useRef(false);
 
   // Effect to update undo/redo buttons state
   useEffect(() => {
@@ -85,71 +86,79 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
     await saveBoardStateToSupabase(currentState);
   }, [saveBoardStateToSupabase]);
 
-  // Effect to ensure membership and load data from Supabase
+  const loadBoardContent = useCallback(
+    async (toastId?: string | number) => {
+      if (hasLoadedBoard.current) return;
+      hasLoadedBoard.current = true;
+
+      const finalToastId = toastId || toast.loading("Loading whiteboard...");
+
+      try {
+        const { data, error } = await supabase
+          .from("boards")
+          .select("content")
+          .eq("room_id", roomId)
+          .eq("board_index", 0)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const boardContent = data?.content || {};
+        canvas.loadFromJSON(boardContent, () => {
+          canvas.renderAll();
+          history.current = [boardContent];
+          historyIndex.current = 0;
+          setCanUndo(false);
+          setCanRedo(false);
+          isInitialLoadRef.current = false;
+          toast.success("Whiteboard loaded!", { id: finalToastId });
+        });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        toast.error(`Could not load whiteboard: ${errorMessage}`, { id: finalToastId });
+      }
+    },
+    [roomId],
+  );
+
   useEffect(() => {
-    if (isCanvasReady && user) {
-      const setupBoard = async () => {
-        const loadingToast = toast.loading("Checking access...");
+    if (!isCanvasReady || !user) return;
 
-        try {
-          // Step 1: Check for existing membership and get role
-          const { data: membership, error: membershipError } = await supabase
-            .from("memberships")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("room_id", roomId)
-            .single();
+    const checkMembership = async () => {
+      const toastId = toast.loading("Checking access...");
+      try {
+        const { data: membership, error } = await supabase
+          .from("memberships")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("room_id", roomId)
+          .single();
 
-          if (membershipError && membershipError.code !== "PGRST116") {
-            // PGRST116: no rows found
-            throw new Error(`Membership check failed: ${membershipError.message}`);
-          }
-
-          if (membership) {
-            // User is already a member
-            setUserRole(membership.role as any);
-            setShowJoinDialog(false);
-            toast.dismiss(loadingToast);
-
-            // Load board content
-            const loadingBoardToast = toast.loading("Loading whiteboard...");
-            const { data, error } = await supabase
-              .from("boards")
-              .select("content")
-              .eq("room_id", roomId)
-              .eq("board_index", 0)
-              .maybeSingle();
-
-            if (error) throw error;
-
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            const boardContent = data?.content || {};
-            canvas.loadFromJSON(boardContent, () => {
-              canvas.renderAll();
-              history.current = [boardContent];
-              historyIndex.current = 0;
-              setCanUndo(false);
-              setCanRedo(false);
-              isInitialLoadRef.current = false;
-              toast.success("Whiteboard loaded!", { id: loadingBoardToast });
-            });
-          } else {
-            // User is not a member, show join dialog
-            setShowJoinDialog(true);
-            toast.dismiss(loadingToast);
-          }
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-          console.error("Failed to load whiteboard state", err);
-          toast.error(`Could not load whiteboard: ${errorMessage}`, { id: loadingToast });
+        if (error && error.code !== "PGRST116") {
+          throw new Error(error.message);
         }
-      };
 
-      setupBoard();
+        toast.dismiss(toastId);
+        if (membership) {
+          setUserRole(membership.role as any);
+          setShowJoinDialog(false);
+          loadBoardContent();
+        } else {
+          setShowJoinDialog(true);
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        toast.error(`Failed to check access: ${errorMessage}`, { id: toastId });
+      }
+    };
+
+    if (userRole === null) {
+      checkMembership();
     }
-  }, [isCanvasReady, roomId, user]);
+  }, [isCanvasReady, user, roomId, userRole, loadBoardContent]);
 
   const handleJoinRoom = async (role: "viewer" | "editor") => {
     if (!user) return;
@@ -158,35 +167,12 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
 
     try {
       const { error } = await supabase.from("memberships").insert({ user_id: user.id, room_id: roomId, role });
-
       if (error) throw error;
 
       setUserRole(role);
       setShowJoinDialog(false);
-      toast.success(`Successfully joined as ${role}!`, { id: joiningToast });
-
-      // Now that membership is created, load the board
-      const { data, error: boardError } = await supabase
-        .from("boards")
-        .select("content")
-        .eq("room_id", roomId)
-        .eq("board_index", 0)
-        .maybeSingle();
-
-      if (boardError) throw boardError;
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const boardContent = data?.content || {};
-      canvas.loadFromJSON(boardContent, () => {
-        canvas.renderAll();
-        history.current = [boardContent];
-        historyIndex.current = 0;
-        setCanUndo(false);
-        setCanRedo(false);
-        isInitialLoadRef.current = false;
-      });
+      toast.dismiss(joiningToast);
+      loadBoardContent();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
       toast.error(`Failed to join: ${errorMessage}`, { id: joiningToast });
@@ -349,7 +335,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         onUpdate={updateHistoryAndSave}
         isReadOnly={isReadOnly}
       />
-      <JoinRoomDialog isOpen={showJoinDialog} onJoin={handleJoinRoom} isJoining={isJoining} />
+      <JoinRoomDialog isOpen={showJoinDialog} onJoin={handleJoinDialog} isJoining={isJoining} />
     </div>
   );
 };
