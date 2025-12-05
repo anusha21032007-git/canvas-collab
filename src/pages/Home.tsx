@@ -22,9 +22,8 @@ const Home = () => {
     queryKey: ["rooms", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("id, name, owner_id");
+      // Use the new RPC function to fetch rooms
+      const { data, error } = await supabase.rpc("get_my_rooms");
       if (error) throw new Error(error.message);
       return data as Room[];
     },
