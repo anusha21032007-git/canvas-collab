@@ -1,7 +1,17 @@
-import { Users, Trash2, Undo2, Redo2, Share2 } from "lucide-react";
+import { Users, Trash2, Undo2, Redo2, Share2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface HeaderProps {
   roomId: string;
@@ -17,8 +27,9 @@ interface HeaderProps {
  * Header component displaying the app title, user count, and action buttons
  */
 const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: HeaderProps) => {
-  const handleShare = () => {
-    const inviteLink = `${window.location.origin}/whiteboard/${roomId}`;
+  const inviteLink = `${window.location.origin}/whiteboard/${roomId}`;
+
+  const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
     toast.success("Invitation link copied to clipboard!");
   };
@@ -42,21 +53,40 @@ const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRed
         </div>
 
         {/* Share button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleShare}
-              className="tool-transition"
-            >
-              <Share2 size={18} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Share & Invite</p>
-          </TooltipContent>
-        </Tooltip>
+        <Dialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="tool-transition">
+                  <Share2 size={18} />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Share & Invite</p>
+            </TooltipContent>
+          </Tooltip>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Share Whiteboard</DialogTitle>
+              <DialogDescription>
+                Anyone with this link can view and edit this whiteboard.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2">
+              <div className="grid flex-1 gap-2">
+                <Label htmlFor="link" className="sr-only">
+                  Link
+                </Label>
+                <Input id="link" defaultValue={inviteLink} readOnly />
+              </div>
+              <Button type="button" size="sm" className="px-3" onClick={handleCopy}>
+                <span className="sr-only">Copy</span>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Undo button */}
         <Tooltip>
