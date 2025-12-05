@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "../ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import JoinRoomDialog from "./JoinRoomDialog";
 
 interface WhiteboardProps {
   roomId: string;
@@ -24,6 +25,9 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
   const [brushColor, setBrushColor] = useState("hsl(0, 0%, 10%)");
   const [brushSize, setBrushSize] = useState(6);
   const [activeTool, setActiveTool] = useState("pencil");
+  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer" | null>(null);
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Mock user count
   const [userCount] = useState(1);
@@ -48,7 +52,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
 
   const saveBoardStateToSupabase = useCallback(
     async (stateToSave: object) => {
-      if (isInitialLoadRef.current) return;
+      if (isInitialLoadRef.current || userRole === "viewer") return;
       const { error } = await supabase.from("boards").upsert(
         {
           room_id: roomId,
@@ -63,7 +67,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         console.error("Error saving board state:", error);
       }
     },
-    [roomId],
+    [roomId, userRole],
   );
 
   const updateHistoryAndSave = useCallback(async () => {
@@ -85,52 +89,57 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
   useEffect(() => {
     if (isCanvasReady && user) {
       const setupBoard = async () => {
-        const loadingToast = toast.loading("Joining and loading whiteboard...");
+        const loadingToast = toast.loading("Checking access...");
 
         try {
-          // Step 1: Ensure user is a member of the room
+          // Step 1: Check for existing membership and get role
           const { data: membership, error: membershipError } = await supabase
             .from("memberships")
-            .select("id")
+            .select("role")
             .eq("user_id", user.id)
             .eq("room_id", roomId)
-            .maybeSingle();
+            .single();
 
-          if (membershipError) throw new Error(`Membership check failed: ${membershipError.message}`);
-
-          if (!membership) {
-            // User is not a member, so add them as an editor
-            const { error: insertError } = await supabase
-              .from("memberships")
-              .insert({ user_id: user.id, room_id: roomId, role: "editor" });
-
-            if (insertError) throw new Error(`Failed to join room: ${insertError.message}`);
-            toast.info("You've been added to this whiteboard as an editor.", { id: loadingToast });
+          if (membershipError && membershipError.code !== "PGRST116") {
+            // PGRST116: no rows found
+            throw new Error(`Membership check failed: ${membershipError.message}`);
           }
 
-          // Step 2: Load board content
-          const { data, error } = await supabase
-            .from("boards")
-            .select("content")
-            .eq("room_id", roomId)
-            .eq("board_index", 0)
-            .maybeSingle();
+          if (membership) {
+            // User is already a member
+            setUserRole(membership.role as any);
+            setShowJoinDialog(false);
+            toast.dismiss(loadingToast);
 
-          if (error) throw error;
+            // Load board content
+            const loadingBoardToast = toast.loading("Loading whiteboard...");
+            const { data, error } = await supabase
+              .from("boards")
+              .select("content")
+              .eq("room_id", roomId)
+              .eq("board_index", 0)
+              .maybeSingle();
 
-          const canvas = canvasRef.current;
-          if (!canvas) return;
+            if (error) throw error;
 
-          const boardContent = data?.content || {};
-          canvas.loadFromJSON(boardContent, () => {
-            canvas.renderAll();
-            history.current = [boardContent];
-            historyIndex.current = 0;
-            setCanUndo(false);
-            setCanRedo(false);
-            isInitialLoadRef.current = false;
-            toast.success("Whiteboard loaded!", { id: loadingToast });
-          });
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            const boardContent = data?.content || {};
+            canvas.loadFromJSON(boardContent, () => {
+              canvas.renderAll();
+              history.current = [boardContent];
+              historyIndex.current = 0;
+              setCanUndo(false);
+              setCanRedo(false);
+              isInitialLoadRef.current = false;
+              toast.success("Whiteboard loaded!", { id: loadingBoardToast });
+            });
+          } else {
+            // User is not a member, show join dialog
+            setShowJoinDialog(true);
+            toast.dismiss(loadingToast);
+          }
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
           console.error("Failed to load whiteboard state", err);
@@ -141,6 +150,50 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
       setupBoard();
     }
   }, [isCanvasReady, roomId, user]);
+
+  const handleJoinRoom = async (role: "viewer" | "editor") => {
+    if (!user) return;
+    setIsJoining(true);
+    const joiningToast = toast.loading(`Joining as ${role}...`);
+
+    try {
+      const { error } = await supabase.from("memberships").insert({ user_id: user.id, room_id: roomId, role });
+
+      if (error) throw error;
+
+      setUserRole(role);
+      setShowJoinDialog(false);
+      toast.success(`Successfully joined as ${role}!`, { id: joiningToast });
+
+      // Now that membership is created, load the board
+      const { data, error: boardError } = await supabase
+        .from("boards")
+        .select("content")
+        .eq("room_id", roomId)
+        .eq("board_index", 0)
+        .maybeSingle();
+
+      if (boardError) throw boardError;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const boardContent = data?.content || {};
+      canvas.loadFromJSON(boardContent, () => {
+        canvas.renderAll();
+        history.current = [boardContent];
+        historyIndex.current = 0;
+        setCanUndo(false);
+        setCanRedo(false);
+        isInitialLoadRef.current = false;
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      toast.error(`Failed to join: ${errorMessage}`, { id: joiningToast });
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   const handleUndo = useCallback(async () => {
     if (historyIndex.current <= 0) return;
@@ -205,47 +258,55 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
     toast.success("Board saved as PNG!");
   }, [roomId]);
 
-  const handleImageUpload = useCallback(async (file: File) => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imgUrl = e.target?.result as string;
-      FabricImage.fromURL(imgUrl, async (img) => {
-        img.scaleToWidth(300);
-        canvas.centerObject(img);
-        canvas.add(img);
-        canvas.renderAll();
-        await updateHistoryAndSave();
-        toast.success("Image added to canvas!");
-      });
-    };
-    reader.readAsDataURL(file);
-  }, [updateHistoryAndSave]);
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imgUrl = e.target?.result as string;
+        FabricImage.fromURL(imgUrl, async (img) => {
+          img.scaleToWidth(300);
+          canvas.centerObject(img);
+          canvas.add(img);
+          canvas.renderAll();
+          await updateHistoryAndSave();
+          toast.success("Image added to canvas!");
+        });
+      };
+      reader.readAsDataURL(file);
+    },
+    [updateHistoryAndSave],
+  );
 
-  const handleBackgroundUpload = useCallback(async (file: File) => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imgUrl = e.target?.result as string;
-      FabricImage.fromURL(imgUrl, async (img) => {
-        if (canvas.width && canvas.height) {
-          canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-            scaleX: canvas.width / (img.width || 1),
-            scaleY: canvas.height / (img.height || 1),
-          });
-        }
-        await updateHistoryAndSave();
-        toast.success("Background image updated!");
-      });
-    };
-    reader.readAsDataURL(file);
-  }, [updateHistoryAndSave]);
+  const handleBackgroundUpload = useCallback(
+    async (file: File) => {
+      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imgUrl = e.target?.result as string;
+        FabricImage.fromURL(imgUrl, async (img) => {
+          if (canvas.width && canvas.height) {
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+              scaleX: canvas.width / (img.width || 1),
+              scaleY: canvas.height / (img.height || 1),
+            });
+          }
+          await updateHistoryAndSave();
+          toast.success("Background image updated!");
+        });
+      };
+      reader.readAsDataURL(file);
+    },
+    [updateHistoryAndSave],
+  );
 
   const handleCanvasReady = useCallback(() => {
     setCanvasReady(true);
   }, []);
+
+  const isReadOnly = userRole === "viewer";
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -265,6 +326,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
+        isReadOnly={isReadOnly}
       />
       <Toolbar
         activeColor={brushColor}
@@ -276,6 +338,7 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         onDownload={handleDownload}
         onImageUpload={handleImageUpload}
         onBackgroundUpload={handleBackgroundUpload}
+        isReadOnly={isReadOnly}
       />
       <Canvas
         brushColor={brushColor}
@@ -284,7 +347,9 @@ const Whiteboard = ({ roomId }: WhiteboardProps) => {
         canvasRef={canvasRef}
         onReady={handleCanvasReady}
         onUpdate={updateHistoryAndSave}
+        isReadOnly={isReadOnly}
       />
+      <JoinRoomDialog isOpen={showJoinDialog} onJoin={handleJoinRoom} isJoining={isJoining} />
     </div>
   );
 };

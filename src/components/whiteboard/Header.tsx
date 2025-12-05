@@ -21,12 +21,22 @@ interface HeaderProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  isReadOnly?: boolean;
 }
 
 /**
  * Header component displaying the app title, user count, and action buttons
  */
-const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: HeaderProps) => {
+const Header = ({
+  roomId,
+  userCount,
+  onClearAll,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  isReadOnly = false,
+}: HeaderProps) => {
   const inviteLink = `${window.location.origin}/whiteboard/${roomId}`;
 
   const handleCopy = () => {
@@ -95,7 +105,7 @@ const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRed
               variant="ghost"
               size="icon"
               onClick={onUndo}
-              disabled={!canUndo}
+              disabled={!canUndo || isReadOnly}
               className="tool-transition"
             >
               <Undo2 size={18} />
@@ -113,7 +123,7 @@ const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRed
               variant="ghost"
               size="icon"
               onClick={onRedo}
-              disabled={!canRedo}
+              disabled={!canRedo || isReadOnly}
               className="tool-transition"
             >
               <Redo2 size={18} />
@@ -131,6 +141,7 @@ const Header = ({ roomId, userCount, onClearAll, onUndo, onRedo, canUndo, canRed
               variant="ghost"
               size="icon"
               onClick={onClearAll}
+              disabled={isReadOnly}
               className="text-destructive hover:text-destructive hover:bg-destructive/10 tool-transition"
             >
               <Trash2 size={18} />

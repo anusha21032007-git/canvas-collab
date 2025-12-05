@@ -18,6 +18,7 @@ interface CanvasProps {
   canvasRef: React.MutableRefObject<FabricCanvas | null>;
   onReady: () => void;
   onUpdate: () => void;
+  isReadOnly?: boolean;
 }
 
 const Canvas = ({
@@ -27,6 +28,7 @@ const Canvas = ({
   canvasRef,
   onReady,
   onUpdate,
+  isReadOnly = false,
 }: CanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const htmlCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -89,6 +91,19 @@ const Canvas = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    if (isReadOnly) {
+      canvas.isDrawingMode = false;
+      canvas.selection = false;
+      canvas.defaultCursor = "default";
+      canvas.forEachObject((obj) => {
+        obj.selectable = false;
+        obj.evented = false;
+      });
+      canvas.off(); // Remove all event listeners
+      canvas.renderAll();
+      return; // Important to stop execution here
+    }
 
     const isDrawingTool = activeTool === "pencil" || activeTool === "eraser";
     const isShapeTool =
@@ -260,12 +275,12 @@ const Canvas = ({
         canvas.off("path:created");
       }
     };
-  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState]);
+  }, [activeTool, brushColor, brushSize, canvasRef, onUpdate, drawingState, isReadOnly]);
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 m-4 rounded-lg border border-canvas-border canvas-shadow overflow-hidden bg-canvas"
+      className="flex-1 m-4 overflow-hidden bg-canvas rounded-lg border border-canvas-border canvas-shadow"
     >
       <canvas ref={htmlCanvasRef} />
     </div>

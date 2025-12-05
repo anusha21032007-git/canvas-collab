@@ -10,6 +10,7 @@ import {
   StickyNote,
   ImagePlus,
   Image as ImageIcon,
+  Eye,
 } from "lucide-react";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ interface ToolbarProps {
   onDownload: () => void;
   onImageUpload: (file: File) => void;
   onBackgroundUpload: (file: File) => void;
+  isReadOnly?: boolean;
 }
 
 const Toolbar = ({
@@ -72,9 +74,21 @@ const Toolbar = ({
   onDownload,
   onImageUpload,
   onBackgroundUpload,
+  isReadOnly = false,
 }: ToolbarProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
+
+  if (isReadOnly) {
+    return (
+      <div className="flex items-center justify-center px-4 py-3 bg-toolbar border-b border-border">
+        <p className="flex items-center text-sm text-muted-foreground">
+          <Eye className="w-4 h-4 mr-2" />
+          You are in view-only mode. Editing is disabled.
+        </p>
+      </div>
+    );
+  }
 
   const isDrawingTool = ["pencil", "rectangle", "circle", "line", "text"].includes(activeTool);
   const isShapeToolActive = SHAPE_TOOLS.some((t) => t.name === activeTool);
@@ -125,7 +139,7 @@ const Toolbar = ({
                   onClick={() => onToolChange(tool.name)}
                   className={cn("cursor-pointer", activeTool === tool.name && "bg-accent text-accent-foreground")}
                 >
-                  <tool.icon className="mr-2 h-4 w-4" />
+                  <tool.icon className="w-4 h-4 mr-2" />
                   <span>{tool.label}</span>
                 </DropdownMenuItem>
               ))}
@@ -136,11 +150,11 @@ const Toolbar = ({
       </div>
 
       {/* Divider */}
-      <div className="h-8 w-px bg-border" />
+      <div className="w-px h-8 bg-border" />
 
       {/* Color picker */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground mr-1">Color</span>
+        <span className="mr-1 text-sm font-medium text-muted-foreground">Color</span>
         <div className="flex items-center gap-1.5">
           {COLORS.map((color) => (
             <button
@@ -150,7 +164,7 @@ const Toolbar = ({
                 "w-8 h-8 rounded-full tool-transition border-2",
                 activeColor === color.value && isDrawingTool
                   ? "border-tool-active scale-110 shadow-md"
-                  : "border-transparent hover:scale-105"
+                  : "border-transparent hover:scale-105",
               )}
               style={{ backgroundColor: color.value }}
               aria-label={`Select ${color.name} color`}
@@ -160,11 +174,11 @@ const Toolbar = ({
       </div>
 
       {/* Divider */}
-      <div className="h-8 w-px bg-border" />
+      <div className="w-px h-8 bg-border" />
 
       {/* Brush size selector */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground mr-1">Size</span>
+        <span className="mr-1 text-sm font-medium text-muted-foreground">Size</span>
         <div className="flex items-center gap-1">
           {SIZES.map((size) => (
             <button
@@ -174,7 +188,7 @@ const Toolbar = ({
                 "flex items-center justify-center w-10 h-10 rounded-lg tool-transition",
                 brushSize === size.value
                   ? "bg-tool-active text-primary-foreground"
-                  : "bg-secondary hover:bg-tool-hover text-secondary-foreground"
+                  : "bg-secondary hover:bg-tool-hover text-secondary-foreground",
               )}
               aria-label={`Select ${size.name} brush size`}
             >
@@ -185,7 +199,7 @@ const Toolbar = ({
       </div>
 
       {/* Divider */}
-      <div className="h-8 w-px bg-border" />
+      <div className="w-px h-8 bg-border" />
 
       {/* Insert/Upload tools */}
       <div className="flex items-center gap-3">
