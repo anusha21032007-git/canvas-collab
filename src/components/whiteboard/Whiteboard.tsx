@@ -322,6 +322,15 @@ const Whiteboard = () => {
     toast.success(`Board ${index + 1} deleted.`);
   };
 
+  const handleCanvasReady = useCallback(() => {
+    setCanvasReady(true);
+  }, []);
+
+  const handleCanvasUpdateAndSave = useCallback(async () => {
+    handleCanvasUpdate();
+    await saveBoardState();
+  }, [handleCanvasUpdate, saveBoardState]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header userCount={userCount} onClearAll={handleClearAll} onUndo={handleUndo} canUndo={canUndo} />
@@ -341,11 +350,8 @@ const Whiteboard = () => {
         brushSize={brushSize}
         activeTool={activeTool}
         canvasRef={canvasRef}
-        onReady={() => setCanvasReady(true)}
-        onUpdate={async () => {
-          handleCanvasUpdate();
-          await saveBoardState();
-        }}
+        onReady={handleCanvasReady}
+        onUpdate={handleCanvasUpdateAndSave}
       />
       <BoardControls
         boardCount={boards.length}
