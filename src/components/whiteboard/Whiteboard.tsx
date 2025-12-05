@@ -109,7 +109,7 @@ const Whiteboard = () => {
   }, []);
 
   const saveBoardState = useCallback(async () => {
-    if (!canvasRef.current || isInitialLoadRef.current) return;
+    if (!canvasRef.current || isInitialLoadRef.current) return null;
     const currentState = canvasRef.current.toJSON();
 
     setBoards((prevBoards) => {
@@ -131,6 +131,7 @@ const Whiteboard = () => {
       toast.error("Failed to save changes.");
       console.error("Error saving board state:", error);
     }
+    return currentState;
   }, [activeBoardIndex]);
 
   const handleColorChange = useCallback((color: string) => {
@@ -234,8 +235,14 @@ const Whiteboard = () => {
   );
 
   const handleAddBoard = async () => {
-    await saveBoardState();
-    const newIndex = boards.length;
+    const savedState = await saveBoardState();
+
+    const currentBoards = [...boards];
+    if (savedState) {
+      currentBoards[activeBoardIndex] = savedState;
+    }
+
+    const newIndex = currentBoards.length;
 
     const { error } = await supabase.from("boards").insert({
       session_id: sessionIdRef.current,
@@ -248,7 +255,7 @@ const Whiteboard = () => {
       return;
     }
 
-    setBoards((prev) => [...prev, {}]);
+    setBoards([...currentBoards, {}]);
     setActiveBoardIndex(newIndex);
 
     if (canvasRef.current) {
@@ -263,12 +270,18 @@ const Whiteboard = () => {
   const handleSwitchBoard = async (index: number) => {
     if (index === activeBoardIndex) return;
 
-    await saveBoardState();
+    const savedState = await saveBoardState();
+
+    const currentBoards = [...boards];
+    if (savedState) {
+      currentBoards[activeBoardIndex] = savedState;
+    }
+
     setActiveBoardIndex(index);
 
     if (canvasRef.current) {
       const canvas = canvasRef.current;
-      canvas.loadFromJSON(boards[index] || {}, () => {
+      canvas.loadFromJSON(currentBoards[index] || {}, () => {
         canvas.renderAll();
         setCanUndo(canvas.getObjects().length > 0);
       });
