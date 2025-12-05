@@ -1,5 +1,6 @@
 import { Users, Trash2, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface HeaderProps {
   userCount: number;
@@ -33,39 +34,57 @@ const Header = ({ userCount, onClearAll, onUndo, onRedo, canUndo, canRedo }: Hea
         </div>
 
         {/* Undo button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="tool-transition"
-        >
-          <Undo2 size={18} />
-          <span className="ml-1.5 hidden sm:inline">Undo</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="tool-transition"
+            >
+              <Undo2 size={18} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Undo</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Redo button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="tool-transition"
-        >
-          <Redo2 size={18} />
-          <span className="ml-1.5 hidden sm:inline">Redo</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="tool-transition"
+            >
+              <Redo2 size={18} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Redo</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Clear all button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClearAll}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 tool-transition"
-        >
-          <Trash2 size={18} />
-          <span className="ml-1.5 hidden sm:inline">Clear All</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClearAll}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 tool-transition"
+            >
+              <Trash2 size={18} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Clear All</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );
